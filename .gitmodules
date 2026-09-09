@@ -1,3 +1,3 @@
 [submodule "compiler/tree-sitter"]
-	path = compiler/tree-sitter
+	path = compiler/internal/tree-sitter
 	url = https://github.com/NaosLang/tree-sitter-naoslang
