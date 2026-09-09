@@ -16,7 +16,7 @@ import (
 func parseImportGlobal(node *tsitter.Node, source []byte) (*ast.ImportGlobal, error) {
 	path := node.ChildByFieldName("path")
 	if path == nil {
-		return nil, fmt.Errorf("null path in global import, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null path in global import", source)
 	}
 	pathStr := path.Utf8Text(source)
 
@@ -29,12 +29,12 @@ func parseImportGlobal(node *tsitter.Node, source []byte) (*ast.ImportGlobal, er
 func parseImportAlias(node *tsitter.Node, source []byte) (*ast.ImportAlias, error) {
 	alias := node.NamedChild(0)
 	if alias == nil {
-		return nil, fmt.Errorf("null identifier in alias import, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null identifier in alias import", source)
 	}
 
 	path := node.ChildByFieldName("path")
 	if path == nil {
-		return nil, fmt.Errorf("null path in alias import, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null path in alias import", source)
 	}
 	pathStr := path.Utf8Text(source)
 
@@ -61,15 +61,19 @@ func parseTypeSimple(node *tsitter.Node, source []byte) (ast.SimpleTypeNode, err
 		return parseTypeSimpleArray(node, source)
 	case nodeKindSliceType:
 		return parseTypeSimpleSlice(node, source)
+	case nodeKindFunctionType:
+		return parseTypeSimpleFunction(node, source)
+	case nodeKindGenericType:
+		return parseTypeSimpleGeneric(node, source)
 	}
-	return nil, fmt.Errorf("invalid %s node as simple type, found at %v", node.Kind(), node.StartPosition())
+	return nil, NewParserError(node, fmt.Sprintf("invalid %s node as simple type", node.Kind()), source)
 }
 
 // parseTypeSimplePrimitive -> i32
 func parseTypeSimplePrimitive(node *tsitter.Node, source []byte) (*ast.TypeSimplePrimitive, error) {
 	name := node.NamedChild(0)
 	if name == nil {
-		return nil, fmt.Errorf("null type name in primitive type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null type name in primitive type", source)
 	}
 
 	return &ast.TypeSimplePrimitive{
@@ -81,7 +85,7 @@ func parseTypeSimplePrimitive(node *tsitter.Node, source []byte) (*ast.TypeSimpl
 func parseTypeSimplePointer(node *tsitter.Node, source []byte) (*ast.TypeSimplePointer, error) {
 	baseNode := node.ChildByFieldName("base")
 	if baseNode == nil {
-		return nil, fmt.Errorf("null base type in pointer type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null base type in pointer type", source)
 	}
 	baseType, err := parseTypeSimple(baseNode, source)
 	if err != nil {
@@ -97,7 +101,7 @@ func parseTypeSimplePointer(node *tsitter.Node, source []byte) (*ast.TypeSimpleP
 func parseTypeSimpleArrayPointer(node *tsitter.Node, source []byte) (*ast.TypeSimpleArrayPointer, error) {
 	baseNode := node.ChildByFieldName("base")
 	if baseNode == nil {
-		return nil, fmt.Errorf("null base type in array pointer type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null base type in array pointer type", source)
 	}
 	baseType, err := parseTypeSimple(baseNode, source)
 	if err != nil {
@@ -113,16 +117,16 @@ func parseTypeSimpleArrayPointer(node *tsitter.Node, source []byte) (*ast.TypeSi
 func parseTypeSimpleArray(node *tsitter.Node, source []byte) (*ast.TypeSimpleArray, error) {
 	size := node.ChildByFieldName("size")
 	if size == nil {
-		return nil, fmt.Errorf("null size in array type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null size in array type", source)
 	}
 	sizeNumb, err := strconv.Atoi(size.Utf8Text(source))
 	if err != nil {
-		return nil, fmt.Errorf("invalid integer as size in array type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "invalid integer as size in array type", source)
 	}
 
 	baseNode := node.ChildByFieldName("base")
 	if baseNode == nil {
-		return nil, fmt.Errorf("null base type in slice type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null base type in slice type", source)
 	}
 	baseType, err := parseTypeSimple(baseNode, source)
 	if err != nil {
@@ -139,7 +143,7 @@ func parseTypeSimpleArray(node *tsitter.Node, source []byte) (*ast.TypeSimpleArr
 func parseTypeSimpleSlice(node *tsitter.Node, source []byte) (*ast.TypeSimpleSlice, error) {
 	baseNode := node.ChildByFieldName("base")
 	if baseNode == nil {
-		return nil, fmt.Errorf("null base type in slice type, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null base type in slice type", source)
 	}
 	baseType, err := parseTypeSimple(baseNode, source)
 	if err != nil {
@@ -151,6 +155,76 @@ func parseTypeSimpleSlice(node *tsitter.Node, source []byte) (*ast.TypeSimpleSli
 	}, nil
 }
 
+func parseTypeSimpleFunction(node *tsitter.Node, source []byte) (*ast.TypeSimpleFunction, error) {
+	params := node.NamedChild(0)
+	if params == nil {
+		return nil, NewParserError(node, "null parameters node in function type", source)
+	}
+
+	fn := &ast.TypeSimpleFunction{
+		Parameters: []ast.SimpleTypeNode{},
+		ReturnType: &ast.TypeSimplePrimitive{Name: "void"},
+	}
+
+	for i := uint(0); i < params.NamedChildCount(); i++ {
+		param := params.NamedChild(i)
+		if param == nil {
+			return nil, NewParserError(node, "null parameter node, in function parameters", source)
+		}
+
+		paramType, err := parseTypeSimple(param, source)
+		if err != nil {
+			return nil, err
+		}
+
+		fn.Parameters = append(fn.Parameters, paramType)
+	}
+
+	returnNode := node.ChildByFieldName("return_type")
+	if returnNode != nil {
+		returnType, err := parseTypeSimple(returnNode, source)
+		if err != nil {
+			return nil, err
+		}
+
+		fn.ReturnType = returnType
+	}
+
+	return fn, nil
+}
+
+func parseTypeSimpleGeneric(node *tsitter.Node, source []byte) (*ast.TypeSimpleGeneric, error) {
+	name := node.ChildByFieldName("name")
+	if name == nil {
+		return nil, NewParserError(node, "null type name in generic type", source)
+	}
+
+	args := node.ChildByFieldName("arguments")
+	if args == nil {
+		return nil, NewParserError(node, "null arguments node, in generic type", source)
+	}
+
+	generic := &ast.TypeSimpleGeneric{
+		Name:      name.Utf8Text(source),
+		Arguments: []ast.SimpleTypeNode{},
+	}
+
+	for i := uint(0); i < args.NamedChildCount(); i++ {
+		arg := args.NamedChild(i)
+		if arg == nil {
+			return nil, NewParserError(node, "null argument node, in generic arguments", source)
+		}
+
+		argType, err := parseTypeSimple(arg, source)
+		if err != nil {
+			return nil, err
+		}
+
+		generic.Arguments = append(generic.Arguments, argType)
+	}
+	return generic, nil
+}
+
 // +-------------------+
 // | Type Declarations |
 // +-------------------+
@@ -160,12 +234,12 @@ func parseTypedeclAlias(node *tsitter.Node, source []byte) (*ast.DeclAliasType, 
 
 	name := node.ChildByFieldName("name")
 	if name == nil {
-		return nil, fmt.Errorf("null alias name in alias typedecl, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null alias name in alias typedecl", source)
 	}
 
 	baseNode := node.ChildByFieldName("base")
 	if baseNode == nil {
-		return nil, fmt.Errorf("null base type in alias typedecl, found at %v", node.StartPosition())
+		return nil, NewParserError(node, "null base type in alias typedecl", source)
 	}
 	baseType, err := parseTypeSimple(baseNode, source)
 	if err != nil {

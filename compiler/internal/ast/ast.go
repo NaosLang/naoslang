@@ -103,9 +103,28 @@ type TypeSimpleArray struct {
 func (n *TypeSimpleArray) Node()      {}
 func (n *TypeSimpleArray) STypeNode() {}
 
+// TypeSimpleSlice -> []SIMPLE_TYPE_NODE
 type TypeSimpleSlice struct {
 	Base SimpleTypeNode
 }
 
 func (n *TypeSimpleSlice) Node()      {}
 func (n *TypeSimpleSlice) STypeNode() {}
+
+// TypeSimpleFunction -> fn([ SIMPLE_TYPE_NODE [, ... ] ]) [ -> SIMPLE_TYPE_NODE ]
+type TypeSimpleFunction struct {
+	Parameters []SimpleTypeNode
+	ReturnType SimpleTypeNode
+}
+
+func (n *TypeSimpleFunction) Node()      {}
+func (n *TypeSimpleFunction) STypeNode() {}
+
+// TypeSimpleGeneric -> ID<SIMPLE_TYPE_NODE [ , ... ]>
+type TypeSimpleGeneric struct {
+	Name      string
+	Arguments []SimpleTypeNode
+}
+
+func (n *TypeSimpleGeneric) Node()      {}
+func (n *TypeSimpleGeneric) STypeNode() {}
