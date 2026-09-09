@@ -1,23 +1,41 @@
 package ast
 
-type Node interface {
-	Node()
-}
+// +------------+
+// | INTERFACES |
+// +------------+
+type (
+	Node interface{ Node() }
+
+	DeclarationNode interface {
+		Node
+		DeclNode()
+	}
+
+	SimpleTypeNode interface {
+		Node
+		STypeNode()
+	}
+
+	ImportNode interface {
+		Node
+		ImpNode()
+	}
+)
+
+// +-------+
+// | NODES |
+// +-------+
 
 type Program struct {
-	Imports []ImportNode
+	Imports      []ImportNode
+	Declarations []DeclarationNode
 }
 
 // +---------+
 // | Imports |
 // +---------+
 
-type ImportNode interface {
-	Node
-	ImpNode()
-}
-
-// ImportAlias -> id = @import("...");
+// ImportAlias -> ID = @import("...");
 type ImportAlias struct {
 	Alias string
 	Path  string
@@ -33,3 +51,61 @@ type ImportGlobal struct {
 
 func (n *ImportGlobal) Node()    {}
 func (n *ImportGlobal) ImpNode() {}
+
+// +-----------+
+// | Typedecls |
+// +-----------+
+
+// DeclAliasType -> [pub] type ID = SIMPLE_TYPE_NODE
+type DeclAliasType struct {
+	IsPublic bool
+	Name     string
+	Base     SimpleTypeNode
+}
+
+func (n *DeclAliasType) Node()     {}
+func (n *DeclAliasType) DeclNode() {}
+
+// +-------------------+
+// | Simple Type Nodes |
+// +-------------------+
+
+// TypeSimplePrimitive -> i32
+type TypeSimplePrimitive struct {
+	Name string
+}
+
+func (n *TypeSimplePrimitive) Node()      {}
+func (n *TypeSimplePrimitive) STypeNode() {}
+
+// TypeSimplePointer -> *SIMPLE_TYPE_NODE
+type TypeSimplePointer struct {
+	Base SimpleTypeNode
+}
+
+func (n *TypeSimplePointer) Node()      {}
+func (n *TypeSimplePointer) STypeNode() {}
+
+// TypeSimpleArrayPointer -> [*]SIMPLE_TYPE_NODE
+type TypeSimpleArrayPointer struct {
+	Base SimpleTypeNode
+}
+
+func (n *TypeSimpleArrayPointer) Node()      {}
+func (n *TypeSimpleArrayPointer) STypeNode() {}
+
+// TypeSimpleArray -> [N]SIMPLE_TYPE_NODE
+type TypeSimpleArray struct {
+	Size int
+	Base SimpleTypeNode
+}
+
+func (n *TypeSimpleArray) Node()      {}
+func (n *TypeSimpleArray) STypeNode() {}
+
+type TypeSimpleSlice struct {
+	Base SimpleTypeNode
+}
+
+func (n *TypeSimpleSlice) Node()      {}
+func (n *TypeSimpleSlice) STypeNode() {}

@@ -18,8 +18,25 @@ import (
 )
 
 const (
+	// +---------+
+	// | Imports |
+	// +---------+
 	nodeKindGlobalImport = "global_import"
 	nodeKindAliasImport  = "alias_import"
+
+	// +--------------+
+	// | Simple Types |
+	// +--------------+
+	nodeKindPrimitiveType    = "id_type"
+	nodeKindPointerType      = "ptr_type"
+	nodeKindArrayPointerType = "array_ptr_type"
+	nodeKindArrayType        = "array_type"
+	nodeKindSliceType        = "slice_type"
+
+	// +-------------------+
+	// | Type Declarations |
+	// +-------------------+
+	nodeKindAliasTypeDecl = "alias_type"
 )
 
 func Parse(source []byte) (*ast.Program, error) {
@@ -35,7 +52,8 @@ func Parse(source []byte) (*ast.Program, error) {
 	defer tree.Close()
 
 	program := &ast.Program{
-		Imports: []ast.ImportNode{},
+		Imports:      []ast.ImportNode{},
+		Declarations: []ast.DeclarationNode{},
 	}
 	root := tree.RootNode()
 
@@ -56,6 +74,16 @@ func Parse(source []byte) (*ast.Program, error) {
 				return nil, err
 			}
 			program.Imports = append(program.Imports, aimp)
+
+		case nodeKindAliasTypeDecl:
+			atypedecl, err := parseTypedeclAlias(node, source)
+			if err != nil {
+				return nil, err
+			}
+			program.Declarations = append(program.Declarations, atypedecl)
+
+		default:
+			return nil, fmt.Errorf("invalid %s node, found at %v", node.Kind(), node.StartPosition())
 		}
 	}
 
