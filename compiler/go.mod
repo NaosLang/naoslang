@@ -3,6 +3,7 @@ module github.com/NaosLang/naoslang
 go 1.24.4
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-cmp v0.7.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 )
