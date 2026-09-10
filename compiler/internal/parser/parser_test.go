@@ -309,3 +309,76 @@ func TestSimpleType(t *testing.T) {
 		test(ca, t)
 	}
 }
+
+func TestComments(t *testing.T) {
+	cases := []testCase{
+		{
+			name:   "line comment",
+			source: `// this is a comment`,
+			exptProg: &ast.Program{
+				Imports:      []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{},
+			},
+		},
+		{
+			name:   "empty line comment",
+			source: `//`,
+			exptProg: &ast.Program{
+				Imports:      []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{},
+			},
+		},
+		{
+			name:   "nested line comment",
+			source: `// //`,
+			exptProg: &ast.Program{
+				Imports:      []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{},
+			},
+		},
+		{
+			name: "multi-line comment",
+			source: `/*
+this is a comment
+*/`,
+			exptProg: &ast.Program{
+				Imports:      []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{},
+			},
+		},
+		{
+			name: "nested multi-line comment",
+			source: `/*
+/*
+this is a comment
+*/
+*/`,
+			exptProg: &ast.Program{
+				Imports:      []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{},
+			},
+		},
+		{
+			name:     "not closed multi-line comment",
+			source:   `/*`,
+			exptProg: nil,
+			isError:  true,
+		},
+		{
+			name:     "not closed nested multi-line comment",
+			source:   `/* /*`,
+			exptProg: nil,
+			isError:  true,
+		},
+		{
+			name:     "semi closed nested nested multi-line comment",
+			source:   `/* /* */`,
+			exptProg: nil,
+			isError:  true,
+		},
+	}
+
+	for _, ca := range cases {
+		test(ca, t)
+	}
+}
