@@ -57,35 +57,8 @@ func NewParserError(node *tsitter.Node, message string, source []byte) ParseErro
 	}
 }
 
-const (
-	// +----------+
-	// | Comments |
-	// +----------+
-	nodeKindLineComment      = "comment_line"
-	nodeKindMultiLineComment = "comment_multiline"
-
-	// +---------+
-	// | Imports |
-	// +---------+
-	nodeKindGlobalImport = "global_import"
-	nodeKindAliasImport  = "alias_import"
-
-	// +--------------+
-	// | Simple Types |
-	// +--------------+
-	nodeKindPrimitiveType    = "id_type"
-	nodeKindPointerType      = "ptr_type"
-	nodeKindArrayPointerType = "array_ptr_type"
-	nodeKindArrayType        = "array_type"
-	nodeKindSliceType        = "slice_type"
-	nodeKindGenericType      = "generic_id_type"
-	nodeKindFunctionType     = "function_type"
-
-	// +-------------------+
-	// | Type Declarations |
-	// +-------------------+
-	nodeKindAliasTypeDecl = "alias_type"
-)
+// Tree-sitter node kinds
+const ()
 
 func Parse(source []byte) (*ast.Program, error) {
 	parser := tsitter.NewParser()
@@ -109,32 +82,8 @@ func Parse(source []byte) (*ast.Program, error) {
 		node := root.NamedChild(i)
 
 		switch node.Kind() {
-		case nodeKindGlobalImport:
-			gimp, err := parseImportGlobal(node, source)
-			if err != nil {
-				return nil, err
-			}
-			program.Imports = append(program.Imports, gimp)
-
-		case nodeKindAliasImport:
-			aimp, err := parseImportAlias(node, source)
-			if err != nil {
-				return nil, err
-			}
-			program.Imports = append(program.Imports, aimp)
-
-		case nodeKindAliasTypeDecl:
-			atypedecl, err := parseTypedeclAlias(node, source)
-			if err != nil {
-				return nil, err
-			}
-			program.Declarations = append(program.Declarations, atypedecl)
-
-		case nodeKindLineComment, nodeKindMultiLineComment:
-			continue
-
 		default:
-			return nil, NewParserError(node, fmt.Sprintf("invalid %s node, found at", node.Kind()), source)
+			return nil, NewParserError(node, fmt.Sprintf("invalid %s expression, found at", node.Kind()), source)
 		}
 	}
 
