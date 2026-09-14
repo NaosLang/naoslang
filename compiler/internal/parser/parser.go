@@ -70,6 +70,23 @@ const (
 	// +----------+
 	nodeKindStringLiteral    = "str_literal"
 	nodeKindRawStringLiteral = "raw_str_literal"
+
+	// +-----------+
+	// | Types Def |
+	// +-----------+
+	nodeKidnAliasType = "alias_type"
+
+	// +-------+
+	// | Types |
+	// +-------+
+	nodeKindIdType              = "id_type"
+	nodeKindPointerType         = "ptr_type"
+	nodeKindArrayPointerType    = "arr_ptr_type"
+	nodeKindArrayType           = "arr_type"
+	nodeKindSliceType           = "slice_type"
+	nodeKindModuleType          = "module_type"
+	nodeKindFunctionType        = "func_type"
+	nodeKindConcreteGenericType = "generic_type"
 )
 
 func Parse(source []byte) (*ast.Program, error) {
@@ -100,6 +117,13 @@ func Parse(source []byte) (*ast.Program, error) {
 				return nil, err
 			}
 			program.Imports = append(program.Imports, impNode)
+
+		case nodeKidnAliasType:
+			aTNode, err := parseAliasTypeDef(node, source)
+			if err != nil {
+				return nil, err
+			}
+			program.Declarations = append(program.Declarations, aTNode)
 
 		default:
 			return nil, NewParserError(node, source, fmt.Sprintf("invalid %s expression, found at", node.Kind()))

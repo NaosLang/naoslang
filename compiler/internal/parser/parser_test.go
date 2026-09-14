@@ -53,7 +53,7 @@ func TestGlobalImport(t *testing.T) {
 			source: `using @import("std.bool");`,
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportGlobalNode{Path: "std.bool"},
+					&ast.ImportGlobalNode{ImportPath: "std.bool"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -67,9 +67,9 @@ using @import("std.math");
 `,
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportGlobalNode{Path: "std.bool"},
-					&ast.ImportGlobalNode{Path: "std.string"},
-					&ast.ImportGlobalNode{Path: "std.math"},
+					&ast.ImportGlobalNode{ImportPath: "std.bool"},
+					&ast.ImportGlobalNode{ImportPath: "std.string"},
+					&ast.ImportGlobalNode{ImportPath: "std.math"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -79,7 +79,7 @@ using @import("std.math");
 			source: "using @import(`std.bool`);",
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportGlobalNode{Path: "std.bool"},
+					&ast.ImportGlobalNode{ImportPath: "std.bool"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -104,7 +104,7 @@ func TestAliasImport(t *testing.T) {
 			source: `bool = @import("std.bool");`,
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportAliasNode{Alias: "bool", Path: "std.bool"},
+					&ast.ImportAliasNode{ImportAlias: "bool", ImportPath: "std.bool"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -118,9 +118,9 @@ math = @import("std.math");
 `,
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportAliasNode{Alias: "bool", Path: "std.bool"},
-					&ast.ImportAliasNode{Alias: "string", Path: "std.string"},
-					&ast.ImportAliasNode{Alias: "math", Path: "std.math"},
+					&ast.ImportAliasNode{ImportAlias: "bool", ImportPath: "std.bool"},
+					&ast.ImportAliasNode{ImportAlias: "string", ImportPath: "std.string"},
+					&ast.ImportAliasNode{ImportAlias: "math", ImportPath: "std.math"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -130,7 +130,7 @@ math = @import("std.math");
 			source: "bool = @import(`std.bool`);",
 			exptProg: &ast.Program{
 				Imports: []ast.ImportNode{
-					&ast.ImportAliasNode{Alias: "bool", Path: "std.bool"},
+					&ast.ImportAliasNode{ImportAlias: "bool", ImportPath: "std.bool"},
 				},
 				Declarations: []ast.DeclarationNode{},
 			},
@@ -140,6 +140,244 @@ math = @import("std.math");
 			source:   `bool = @import("std.bool")`,
 			exptProg: nil,
 			isError:  true,
+		},
+	}
+
+	for _, ca := range cases {
+		test(ca, t)
+	}
+}
+
+func TestPrimitiveTypes(t *testing.T) {
+	cases := []testCase{
+		{
+			name:   "id type",
+			source: `type test = i32;`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeIdNode{TypeName: "i32"},
+					},
+				},
+			},
+		},
+		{
+			name:   "void id type",
+			source: `type test = void;`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeVoidNode{},
+					},
+				},
+			},
+		},
+		{
+			name: "pointer types",
+			source: `
+type test = *i32;
+type test = *const i32;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypePointerNode{
+							IsPointingConst: false,
+							PointedType:     &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypePointerNode{
+							IsPointingConst: true,
+							PointedType:     &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "array pointer types",
+			source: `
+type test = [*]i32;
+type test = [*]const i32;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeArrayPointerNode{
+							IsDataConst:     false,
+							PointedDataType: &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeArrayPointerNode{
+							IsDataConst:     true,
+							PointedDataType: &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "array types",
+			source: `
+type test = [1]i32;
+type test = [0xf]const i32;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeArrayNode{
+							Size:        1,
+							IsDataConst: false,
+							DataType:    &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeArrayNode{
+							Size:        15,
+							IsDataConst: true,
+							DataType:    &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "slice types",
+			source: `
+type test = []i32;
+type test = []const i32;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeSliceNode{
+							IsDataConst:     false,
+							PointedDataType: &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeSliceNode{
+							IsDataConst:     true,
+							PointedDataType: &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "module type",
+			source: `
+type test = math.vec3;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeModuleNode{
+							ModuleName: "math",
+							ModuleType: &ast.TypeIdNode{TypeName: "vec3"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "function types",
+			source: `
+type test = fn() -> i32;
+type test = fn();
+type test = fn(i32);
+type test = fn(i32, u32, i8) -> void;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeFunctionNode{
+							ParameterTypes: []ast.TypeNode{},
+							ReturnType:     &ast.TypeIdNode{TypeName: "i32"},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeFunctionNode{
+							ParameterTypes: []ast.TypeNode{},
+							ReturnType:     &ast.TypeVoidNode{},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeFunctionNode{
+							ParameterTypes: []ast.TypeNode{
+								&ast.TypeIdNode{TypeName: "i32"},
+							},
+							ReturnType: &ast.TypeVoidNode{},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeFunctionNode{
+							ParameterTypes: []ast.TypeNode{
+								&ast.TypeIdNode{TypeName: "i32"},
+								&ast.TypeIdNode{TypeName: "u32"},
+								&ast.TypeIdNode{TypeName: "i8"},
+							},
+							ReturnType: &ast.TypeVoidNode{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "concrete generic types",
+			source: `
+type test = option<i32>;
+type test = result<i32, none>;
+`,
+			exptProg: &ast.Program{
+				Imports: []ast.ImportNode{},
+				Declarations: []ast.DeclarationNode{
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeConcreteGenericNode{
+							TypeName: "option",
+							GenericArgumentTypes: []ast.TypeNode{
+								&ast.TypeIdNode{TypeName: "i32"},
+							},
+						},
+					},
+					&ast.TypeDefAliasNode{
+						TypeName: "test",
+						BaseType: &ast.TypeConcreteGenericNode{
+							TypeName: "result",
+							GenericArgumentTypes: []ast.TypeNode{
+								&ast.TypeIdNode{TypeName: "i32"},
+								&ast.TypeIdNode{TypeName: "none"},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
